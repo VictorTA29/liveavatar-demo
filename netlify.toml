@@ -1,0 +1,16 @@
+# Despliegue del demo de LiveAvatar (apps/demo) desde este monorepo pnpm.
+#
+# El demo depende de packages/js-sdk via "workspace:*", asi que el SDK debe
+# compilarse antes que la app: sin su carpeta lib/ el build de Next falla.
+
+[build]
+  command = "pnpm --filter @heygen/liveavatar-web-sdk build && pnpm --filter demo build"
+  publish = "apps/demo/.next"
+
+[build.environment]
+  # El monorepo declara "engines": { "node": ">=22" }
+  NODE_VERSION = "22"
+
+# Convierte las rutas de API y el renderizado de Next en funciones de Netlify.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

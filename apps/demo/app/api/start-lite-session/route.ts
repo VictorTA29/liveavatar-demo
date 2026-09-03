@@ -1,9 +1,52 @@
+import { NextRequest } from "next/server";
 import { API_KEY, API_URL, AVATAR_ID, IS_SANDBOX } from "../secrets";
+import { SANDBOX_AVATAR_ID } from "../../../src/avatars/constants";
 
-export async function POST() {
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+interface StartLiteSessionRequestBody {
+  avatarId?: string;
+  isSandbox?: boolean;
+}
+
+export async function POST(request: NextRequest) {
   let session_token = "";
   let session_id = "";
   try {
+    const body: StartLiteSessionRequestBody = await request
+      .json()
+      .catch(() => ({}));
+
+    const requestedAvatar = body.avatarId?.trim();
+    let avatarId = AVATAR_ID;
+    if (requestedAvatar && requestedAvatar !== "default") {
+      if (!UUID_PATTERN.test(requestedAvatar)) {
+        return new Response(
+          JSON.stringify({ error: "avatarId no es un identificador valido" }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      avatarId = requestedAvatar;
+    }
+
+    const isSandbox =
+      typeof body.isSandbox === "boolean" ? body.isSandbox : IS_SANDBOX;
+
+    if (isSandbox && avatarId !== SANDBOX_AVATAR_ID) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "En modo sandbox solo funciona el avatar Wayne. Desactiva sandbox para usar otro avatar (consume creditos).",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    console.log(
+      `[start-lite-session] avatar_id=${avatarId} sandbox=${isSandbox}`,
+    );
+
     const res = await fetch(`${API_URL}/v1/sessions/token`, {
       method: "POST",
       headers: {
@@ -12,8 +55,8 @@ export async function POST() {
       },
       body: JSON.stringify({
         mode: "LITE",
-        avatar_id: AVATAR_ID,
-        is_sandbox: IS_SANDBOX,
+        avatar_id: avatarId,
+        is_sandbox: isSandbox,
       }),
     });
     if (!res.ok) {

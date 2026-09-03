@@ -1,3 +1,41 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  /*
+   * The app is dark, but native form controls and their popups are painted by
+   * the browser, not by Tailwind. Declaring the scheme makes Chrome open
+   * <select> dropdowns on a dark background instead of a white one, where the
+   * inherited white option text was invisible. It also darkens scrollbars.
+   */
+  :root {
+    color-scheme: dark;
+  }
+
+  /*
+   * Belt and braces: some browsers ignore color-scheme for the option list, so
+   * paint the options explicitly to match the page.
+   */
+  select option,
+  select optgroup {
+    background-color: #18181b; /* zinc-900 */
+    color: #ffffff;
+  }
+
+  /* Group headings read as labels, not as selectable entries. */
+  select optgroup {
+    color: #a1a1aa; /* zinc-400 */
+    font-weight: 600;
+  }
+
+  select optgroup option {
+    color: #ffffff;
+    font-weight: 400;
+  }
+
+  /* Disabled entries stay legible but clearly inactive. */
+  select option:disabled {
+    color: #71717a; /* zinc-500 */
+  }
+}

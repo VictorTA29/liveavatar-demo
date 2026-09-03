@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LiveAvatarSession } from "./LiveAvatarSession";
+import { SessionConfig, ResolvedSessionConfig } from "./SessionConfig";
 import { SessionInteractivityMode } from "@heygen/liveavatar-web-sdk";
 
 export type SessionMode = "FULL" | "FULL_PTT" | "LITE";
@@ -16,6 +17,14 @@ export const LiveAvatarDemo = () => {
   const [manualToken, setManualToken] = useState("");
   const [manualMode, setManualMode] = useState<SessionMode>("FULL");
 
+  const [config, setConfig] = useState<ResolvedSessionConfig | null>(null);
+
+  // setState is stable, but SessionConfig reports through an effect, so keep
+  // the callback identity stable too.
+  const handleConfigChange = useCallback((next: ResolvedSessionConfig) => {
+    setConfig(next);
+  }, []);
+
   const handleStartFullSession = async (pushToTalk: boolean = false) => {
     setLoading(true);
     setError(null);
@@ -25,7 +34,13 @@ export const LiveAvatarDemo = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ pushToTalk }),
+        body: JSON.stringify({
+          pushToTalk,
+          contextId: config?.contextId,
+          avatarId: config?.avatarId,
+          voiceId: config?.voiceId,
+          isSandbox: config?.isSandbox,
+        }),
       });
       if (!res.ok) {
         const error = await res.json();
@@ -49,6 +64,13 @@ export const LiveAvatarDemo = () => {
     try {
       const res = await fetch("/api/start-lite-session", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          avatarId: config?.avatarId,
+          isSandbox: config?.isSandbox,
+        }),
       });
       if (!res.ok) {
         const error = await res.json();
@@ -108,24 +130,32 @@ export const LiveAvatarDemo = () => {
             </div>
           )}
 
+          <SessionConfig onChange={handleConfigChange} />
+
+          {config?.warning && (
+            <div className="w-full px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
+              {config.warning}
+            </div>
+          )}
+
           <div className="w-full flex flex-col gap-3">
             <button
               onClick={() => handleStartFullSession(false)}
-              disabled={loading}
+              disabled={loading || Boolean(config?.warning)}
               className="w-full px-6 py-2.5 rounded-lg bg-white/10 text-white font-medium text-base border border-white/20 hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Starting..." : "Full Mode"}
             </button>
             <button
               onClick={() => handleStartFullSession(true)}
-              disabled={loading}
+              disabled={loading || Boolean(config?.warning)}
               className="w-full px-6 py-2.5 rounded-lg bg-white/10 text-white font-medium text-base border border-white/20 hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Starting..." : "Full Mode (Push to Talk)"}
             </button>
             <button
               onClick={handleStartLiteSession}
-              disabled={loading}
+              disabled={loading || Boolean(config?.warning)}
               className="w-full px-6 py-2.5 rounded-lg bg-white/10 text-white font-medium text-base border border-white/20 hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Starting..." : "Lite Mode"}
@@ -139,6 +169,16 @@ export const LiveAvatarDemo = () => {
               className="w-full px-6 py-2.5 rounded-lg bg-white/10 text-white font-medium text-base border border-white/20 hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               ElevenLabs Agent Connector →
+            </button>
+            <button
+              onClick={() => {
+                setError(null);
+                router.push("/knowledge");
+              }}
+              disabled={loading}
+              className="w-full px-6 py-2.5 rounded-lg bg-white/10 text-white font-medium text-base border border-white/20 hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Base de Conocimientos →
             </button>
           </div>
 
